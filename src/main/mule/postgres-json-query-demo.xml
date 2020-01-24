@@ -1,0 +1,69 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<mule xmlns:ee="http://www.mulesoft.org/schema/mule/ee/core" xmlns:db="http://www.mulesoft.org/schema/mule/db"
+	xmlns:http="http://www.mulesoft.org/schema/mule/http"
+	xmlns="http://www.mulesoft.org/schema/mule/core" xmlns:doc="http://www.mulesoft.org/schema/mule/documentation" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://www.mulesoft.org/schema/mule/core http://www.mulesoft.org/schema/mule/core/current/mule.xsd
+http://www.mulesoft.org/schema/mule/http http://www.mulesoft.org/schema/mule/http/current/mule-http.xsd
+http://www.mulesoft.org/schema/mule/db http://www.mulesoft.org/schema/mule/db/current/mule-db.xsd
+http://www.mulesoft.org/schema/mule/ee/core http://www.mulesoft.org/schema/mule/ee/core/current/mule-ee.xsd">
+	<http:listener-config name="HTTP_Listener_config" doc:name="HTTP Listener config" doc:id="45dfd26b-5dbc-48f3-94f6-46259597b21e" >
+		<http:listener-connection host="0.0.0.0" port="8083" />
+	</http:listener-config>
+	<db:config name="Database_Config" doc:name="Database Config" doc:id="6f4e3e71-e06a-43bc-a528-83274bda2dbb" >
+		<db:generic-connection url="jdbc:postgresql://ec2-46-137-188-105.eu-west-1.compute.amazonaws.com:5432/dfu0a55m4h23tj?sslmode=require" driverClassName="org.postgresql.Driver" user="zggpwpruowzqxp" password="53d149780281c3dbf9bb5e82fd123d4245ae059a4d2b3c45569c2bc8b44f5bd8" />
+	</db:config>
+	<flow name="postgres-json-query-demoFlow" doc:id="15cd3406-97f2-4be5-8a30-80e46ef380b5" >
+		<http:listener doc:name="GET searchJSON" doc:id="eb3130fc-35d1-4fe1-82ed-8f89b6633242" config-ref="HTTP_Listener_config" path="/searchJSON"/>
+		<ee:transform doc:name="query" doc:id="127ae215-f8ea-4c6e-af62-9558f77942cd" >
+			<ee:message >
+			</ee:message>
+			<ee:variables >
+				<ee:set-variable variableName="query" ><![CDATA['select ' ++
+	'person_id, ' ++
+	'person_name, ' ++
+	'link_value ' ++
+'from ( ' ++
+
+	'select ' ++
+		'platform, ' ++
+		'filtered_link::json ->> \'platform\' as type_of_platform, ' ++
+		'filtered_link::json ->> \'link\' as link_value, ' ++
+		'filtered_link, ' ++
+		'person_id, ' ++
+		'person_name ' ++
+	'from ( ' ++
+	
+		'select ' ++
+			'link as filtered_link, ' ++
+			'link::json -> \'platform\' as platform, ' ++
+			'person_id, ' ++
+			'person_name ' ++
+		'from ( ' ++
+		
+			'select ' ++
+				'json_array_elements_text(a.links) as link, ' ++
+				'a.id as person_id, ' ++
+				'a.name as person_name ' ++
+			'from person a ' ++
+			
+		') as t_link ' ++
+		'where link::jsonb ? \'platform\' ' ++
+		
+	') as t_platform ' ++
+	
+') as t_type_of_platform ' ++
+'where type_of_platform like \'facebookpageid\' ' ++
+'order by person_id ' ++
+'limit 5 ' ++
+'offset 0 ']]></ee:set-variable>
+			</ee:variables>
+		</ee:transform>
+		<db:select doc:name="Select" doc:id="4e8b7a63-594e-43ed-961f-1dece7714a69" config-ref="Database_Config">
+			<db:sql >#[vars.query]</db:sql>
+		</db:select>
+		<set-payload value="#[%dw 2.0
+output application/json
+---
+payload]" doc:name="Set Payload" doc:id="dfa71361-e802-4985-a4d4-c14bd194fd29" />
+	</flow>
+</mule>
