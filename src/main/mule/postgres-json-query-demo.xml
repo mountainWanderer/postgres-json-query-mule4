@@ -58,6 +58,49 @@ http://www.mulesoft.org/schema/mule/ee/core http://www.mulesoft.org/schema/mule/
 'offset 0 ']]></ee:set-variable>
 			</ee:variables>
 		</ee:transform>
+		<ee:transform doc:name="New version of query" doc:id="9d0f191e-4074-44b0-ba4a-3ef44f7dccdc">
+			<ee:message />
+			<ee:variables>
+				<ee:set-variable variableName="query"><![CDATA['select ' ++
+	'person_id, ' ++
+	'person_name, ' ++
+	'link_value ' ++
+'from ( ' ++
+
+	'select ' ++
+		'platform, ' ++
+		'filtered_link\:\:json ->> \'platform\' as type_of_platform, ' ++
+		'filtered_link\:\:json ->> \'link\' as link_value, ' ++
+		'filtered_link, ' ++
+		'person_id, ' ++
+		'person_name ' ++
+	'from ( ' ++
+
+		'select ' ++
+			'link as filtered_link, ' ++
+			'link\:\:json -> \'platform\' as platform, ' ++
+			'person_id, ' ++
+			'person_name ' ++
+		'from ( ' ++
+
+			'select ' ++
+				'json_array_elements_text(a.links) as link, ' ++
+				'a.id as person_id, ' ++
+				'a.name as person_name ' ++
+			'from person a ' ++
+
+		') as t_link ' ++
+
+
+	') as t_platform ' ++
+
+') as t_type_of_platform ' ++
+'where type_of_platform like \'facebookpageid\' ' ++
+'order by person_id ' ++
+'limit 5 ' ++
+'offset 0 ']]></ee:set-variable>
+			</ee:variables>
+		</ee:transform>
 		<db:select doc:name="Select" doc:id="4e8b7a63-594e-43ed-961f-1dece7714a69" config-ref="Database_Config">
 			<db:sql >#[vars.query]</db:sql>
 		</db:select>
@@ -65,5 +108,27 @@ http://www.mulesoft.org/schema/mule/ee/core http://www.mulesoft.org/schema/mule/
 output application/json
 ---
 payload]" doc:name="Set Payload" doc:id="dfa71361-e802-4985-a4d4-c14bd194fd29" />
+	</flow>
+	
+	<flow name="postgres-json-query-demoFlow-NO-FILTER" doc:id="26c4711a-74f1-4995-8a75-4cd93a44d160" >
+		<http:listener doc:name="GET searchJSON-NO-FILTER" doc:id="b26e6934-7fd1-4732-87eb-8432ab4b257a" config-ref="HTTP_Listener_config" path="/searchJSON-NO-FILTER"/>
+		<ee:transform doc:name="query" doc:id="b3ab6355-4955-46e0-b3fd-fc10d315659f" >
+			<ee:message >
+			</ee:message>
+			<ee:variables >
+				<ee:set-variable variableName="query" ><![CDATA['select ' ++
+	'json_array_elements_text(a.links) as link, ' ++
+	'a.id as person_id, ' ++
+	'a.name as person_name ' ++
+'from person a ']]></ee:set-variable>
+			</ee:variables>
+		</ee:transform>
+		<db:select doc:name="Select" doc:id="e1a2a887-be79-4393-9064-c8a4c67d1285" config-ref="Database_Config">
+			<db:sql >#[vars.query]</db:sql>
+		</db:select>
+		<set-payload value="#[%dw 2.0
+output application/json
+---
+payload]" doc:name="Set Payload" doc:id="632adcdf-8660-430a-80c6-f039b9dba354" />
 	</flow>
 </mule>
